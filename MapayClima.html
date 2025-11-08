@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Clima y Potencia - General Güemes</title>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { 
+    font-family: Arial; 
+    text-align: center; 
+    background: #f0f4f7; 
+    color: #333; 
+  }
+  h2 { margin-top: 20px; }
+  #map { height: 500px; width: 90%; margin: 20px auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}
+  .weather-current {
+    margin: 20px auto;
+    font-size: 1.8em;
+    background: #fff;
+    padding: 15px 20px;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  .chart-container {
+    position: relative;
+    width: 90%;
+    height: 500;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 20px;
+  }
+  ul { text-align: left; font-size: 18px; margin-left: 40px; }
+</style>
+</head>
+<body>
+
+<h2>Mapa y clima actual en General Güemes (Salta)</h2>
+<div id="map"></div>
+
+<h2>Datos y Potencia Estimada</h2>
+<ul>
+  <li>Se obtienen temperaturas y humedades reales del pronóstico de <b>Open-Meteo</b>.</li>
+  <li>Calcula la potencia estimada con la ecuación:
+    <ul><b>Potencia = 64.476
+      <ul>+ 0.75 * Temperatura Ambiente</ul>
+      <ul>+ 0.494 * Humedad Relativa</ul>
+      <ul>- 0.0047 * (Temperatura Ambiente)^2</ul>
+      <ul>- 0.0063 * Temperatura Ambiente * Humedad Relativa</ul>
+      <ul>- 0.00161 * (Humedad Relativa)^2</ul>
+      </b>
+      Esta ecuacion tiene un <u>R² de 76 %</u><br>
+      <u>R² (R cuadrado)</u>: mide qué tan bien un modelo explica la variabilidad de los datos observados. 
+    </ul>
+  </li>
+  <li>Los gráficos de pronóstico y potencia se actualizan automáticamente.</li>
+</ul>
+
+<div class="weather-current" id="temp">Cargando...</div>
+
+<h2>Pronóstico Semanal</h2>
+<div class="chart-container">
+  <canvas id="chart"></canvas>
+</div>
+
+<h2>Potencia estimada (Todas las Condiciones)</h2>
+<div class="chart-container">
+  <canvas id="potenciaUnificada"></canvas>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+// Coordenadas General Güemes, Salta
+const lat = -24.689;
+const lon = -65.044;
+
+// === MAPA ===
+const map = L.map('map').setView([lat, lon], 3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// === CLIMA ACTUAL ===
+const urlCurrent = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m&temperature_unit=celsius&windspeed_unit=kmh`;
+
+fetch(urlCurrent)
+  .then(res => res.json())
+  .then(data => {
+    const temp = data.current_weather.temperature;
+    const now = new Date();
+    const nowHour = now.toISOString().slice(0,13);
+
+    let humidity = null;
+    for(let i=0; i<data.hourly.time.length; i++){
+      if(data.hourly.time[i].slice(0,13) === nowHour){
+        humidity = data.hourly.relativehumidity_2m[i];
+        break;
+      }
+    }
+
+    const potencia = 64.476 + 0.75*temp + 0.494*humidity - 0.0047*temp**2 - 0.0063*temp*humidity - 0.00161*humidity**2;
+
+    document.getElementById("temp").innerHTML = `🌡️ ${temp.toFixed(1)} °C, 💧 ${humidity}% → ⚡ Potencia estimada: ${potencia.toFixed(2)} MW`;
+
+    L.marker([lat, lon])
+      .addTo(map)
+      .bindPopup(`<b>General Güemes</b><br>
+                  🌡️ ${temp.toFixed(1)} °C<br>
+                  💧 ${humidity}%<br>
+                  ⚡ Potencia: ${potencia.toFixed(2)} MW`)
+      .openPopup();
+  })
+  .catch(() => { document.getElementById("temp").innerHTML = "No se pudo obtener el clima."; });
+
+// === PRONÓSTICO SEMANAL Y POTENCIA ===
+const urlForecast = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&hourly=relativehumidity_2m&timezone=America/Argentina/Salta&temperature_unit=celsius`;
+
+fetch(urlForecast)
+  .then(res => res.json())
+  .then(data => {
+    const humidityByDay = {};
+    data.hourly.time.forEach((t,i) => {
+      const day = t.split("T")[0];
+      if(!humidityByDay[day]) humidityByDay[day] = [];
+      humidityByDay[day].push(data.hourly.relativehumidity_2m[i]);
+    });
+
+    const labels = data.daily.time.map(d => new Date(d).toLocaleDateString('es-AR', { weekday: 'short' }));
+    const tempMax = data.daily.temperature_2m_max;
+    const tempMin = data.daily.temperature_2m_min;
+    const humMax = data.daily.time.map(d => Math.max(...humidityByDay[d]));
+    const humMin = data.daily.time.map(d => Math.min(...humidityByDay[d]));
+
+    // Gráfico clima semanal
+    new Chart(document.getElementById('chart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Temp Máx (°C)', data: tempMax, borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)', fill:true, tension:0.4, yAxisID:'yTemp' },
+          { label: 'Temp Mín (°C)', data: tempMin, borderColor: 'rgba(255,159,64,1)', backgroundColor:'rgba(255,159,64,0.2)', fill:true, tension:0.4, yAxisID:'yTemp' },
+          { label: 'Humedad Máx (%)', data: humMax, borderColor: 'rgba(54,162,235,1)', backgroundColor:'rgba(54,162,235,0.1)', fill:true, tension:0.4, yAxisID:'yHum' },
+          { label: 'Humedad Mín (%)', data: humMin, borderColor: 'rgba(75,192,192,1)', backgroundColor:'rgba(75,192,192,0.1)', fill:true, tension:0.4, yAxisID:'yHum' }
+        ]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        scales:{
+          yTemp:{type:'linear', position:'left', title:{display:true,text:'Temperatura (°C)'}},
+          yHum:{type:'linear', position:'right', title:{display:true,text:'Humedad (%)'}, min:0, max:100, grid:{drawOnChartArea:false}}
+        }
+      }
+    });
+
+    // Potencia: unificar todas las condiciones
+    const potenciaMax = tempMax.map((t,i) => 64.476 + 0.75*t + 0.494*humMax[i] - 0.0047*t**2 -0.0063*t*humMax[i]-0.00161*humMax[i]**2);
+    const potenciaMin = tempMin.map((t,i) => 64.476 + 0.75*t + 0.494*humMin[i] - 0.0047*t**2 -0.0063*t*humMin[i]-0.00161*humMin[i]**2);
+    const potenciaMaxTemp_HumMin = tempMax.map((t,i) => 64.476+0.75*t+0.494*humMin[i]-0.0047*t**2-0.0063*t*humMin[i]-0.00161*humMin[i]**2);
+    const potenciaMinTemp_HumMax = tempMin.map((t,i) => 64.476+0.75*t+0.494*humMax[i]-0.0047*t**2-0.0063*t*humMax[i]-0.00161*humMax[i]**2);
+
+    new Chart(document.getElementById('potenciaUnificada').getContext('2d'), {
+      type:'line',
+      data:{
+        labels:labels,
+        datasets:[
+          {label:'Potencia (Temp y Hum Máx)', data:potenciaMax, borderColor:'rgba(255,0,0,1)', backgroundColor:'rgba(255,0,0,0.1)', fill:true, tension:0.3 },
+          {label:'Potencia (Temp y Hum Mín)', data:potenciaMin, borderColor:'rgba(0,0,255,1)', backgroundColor:'rgba(0,0,255,0.1)', fill:true, tension:0.3 },
+          {label:'Potencia (Temp Máx + Hum Mín)', data:potenciaMaxTemp_HumMin, borderColor:'rgba(255,165,0,1)', backgroundColor:'rgba(255,165,0,0.1)', fill:true, tension:0.3 },
+          {label:'Potencia (Temp Mín + Hum Máx)', data:potenciaMinTemp_HumMax, borderColor:'rgba(0,128,0,1)', backgroundColor:'rgba(0,128,0,0.1)', fill:true, tension:0.3 }
+        ]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins: {
+          legend:{position:'top'},
+          title:{display:true, text:'Potencia estimada (Todas las Condiciones)'}
+        },
+        scales:{
+          y:{title:{display:true,text:'Potencia (MW)'}},
+          x:{title:{display:true,text:'Día'}}
+        }
+      }
+    });
+
+  })
+  .catch(err=>console.error(err));
+</script>
+</body>
+</html>
