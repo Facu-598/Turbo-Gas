@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pronóstico en Departamento General Güemes</title>
+<style>
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    text-align: center;
+    background: linear-gradient(180deg, #d9e8ff 0%, #f2f6fc 100%);
+    color: #333;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 1.8em;
+    margin-bottom: 10px;
+  }
+
+  /* Clima actual */
+  .weather-current {
+    margin: 20px auto;
+    font-size: 1.6em;
+    background: #fff;
+    padding: 15px 25px;
+    border-radius: 15px;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  /* Pronóstico temperatura/humedad */
+  .forecast {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .day-card {
+    background: linear-gradient(180deg, #bcbcbc 0%, #f2f6fc 100%);
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    padding: 20px 10px;
+    width: 70px;
+    transition: transform 0.2s;
+  }
+
+  .day-card:hover { transform: scale(1); }
+
+  .day { font-weight: bold; font-size: 1em; color: #0078d7; margin-bottom: 1px; }
+  .icon { font-size: 2.2em; margin: 5px 0; }
+  .temp { font-size: 1.2em; color: #ff5b5b; margin: 5px 0; }
+  .temp span { color: #888; font-size: 0.9em; }
+  .humidity { font-size: 1em; color: #0078d7; }
+
+  /* Pronóstico potencia */
+  .potencia-container {
+    font-family: "Segoe UI", Arial, sans-serif;
+    text-align: center;
+    margin: 10px auto 0;
+    padding: 20px 0;
+    max-width: 900px;
+  }
+
+  .potencia-container h1 {
+    font-size: 1.6em;
+    margin-bottom: 10px;
+    color: #333;
+  }
+
+  .potencia-forecast {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+
+  .potencia-day { font-weight: bold; font-size: 1em; color: #0078d7; margin-bottom: 2px; }
+  .potencia-icon { font-size: 2.1em; margin: 5px 0; }
+  .potencia-power { font-size: 1.15em; color: #ffb100; margin: 5px 0; }
+  .potencia-power span { color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Pronóstico semanal - Departamento General Güemes (Salta)</h1>
+
+<!-- Clima actual -->
+<div class="weather-current" id="temp">Cargando clima actual...</div>
+
+<!-- Pronóstico temperatura/humedad -->
+<div class="forecast" id="forecast"></div>
+  
+<!-- Pronóstico de potencia -->
+<div class="potencia-container">
+  <h1>⚡ Pronóstico semanal de potencia</h1>
+  <div class="potencia-forecast" id="potenciaForecast"></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; margin: 30px 40px;">
+  <a href="MapayClima.html" style="background-color: #4CAF50; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;">← Volver</a>
+</div>
+
+<script>
+// Coordenadas
+const lat = -24.689;
+const lon = -65.044;
+
+// Clima actual
+const urlCurrent = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m&temperature_unit=celsius&windspeed_unit=kmh`;
+
+fetch(urlCurrent)
+  .then(res => res.json())
+  .then(data => {
+    const temp = data.current_weather.temperature;
+    const now = new Date();
+    const nowHour = now.toISOString().slice(0,13);
+
+    let humidity = null;
+    for (let i = 0; i < data.hourly.time.length; i++) {
+      if (data.hourly.time[i].slice(0,13) === nowHour) {
+        humidity = data.hourly.relativehumidity_2m[i];
+        break;
+      }
+    }
+
+    document.getElementById("temp").innerHTML = `🌡️ ${temp}°C &nbsp;&nbsp; 💧 ${humidity}%`;
+  });
+
+// Pronóstico de 7 días completo (temperatura/humedad y potencia)
+const urlForecast = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&hourly=relativehumidity_2m&timezone=America/Argentina/Salta`;
+
+fetch(urlForecast)
+  .then(res => res.json())
+  .then(data => {
+    // Agrupar humedad por día
+    const humidityByDay = {};
+    data.hourly.time.forEach((t, i) => {
+      const day = t.split("T")[0];
+      if (!humidityByDay[day]) humidityByDay[day] = [];
+      humidityByDay[day].push(data.hourly.relativehumidity_2m[i]);
+    });
+
+    const days = data.daily.time;
+    const tempMax = data.daily.temperature_2m_max;
+    const tempMin = data.daily.temperature_2m_min;
+
+    const humMax = days.map(d => humidityByDay[d] ? Math.max(...humidityByDay[d]) : 0);
+    const humMin = days.map(d => humidityByDay[d] ? Math.min(...humidityByDay[d]) : 0);
+
+    // Pronóstico potencia
+    const potenciaMax = tempMax.map((t,i) =>
+      64.476 + 0.75*t + 0.494*humMax[i] - 0.0047*t**2 - 0.0063*t*humMax[i] - 0.00161*humMax[i]**2
+    );
+    const potenciaMin = tempMin.map((t,i) =>
+      64.476 + 0.75*t + 0.494*humMin[i] - 0.0047*t**2 - 0.0063*t*humMin[i] - 0.00161*humMin[i]**2
+    );
+    const potenciaMaxTemp_HumMin = tempMax.map((t,i) =>
+      64.476 + 0.75*t + 0.494*humMin[i] - 0.0047*t**2 - 0.0063*t*humMin[i] - 0.00161*humMin[i]**2
+    );
+    const potenciaMinTemp_HumMax = tempMin.map((t,i) =>
+      64.476 + 0.75*t + 0.494*humMax[i] - 0.0047*t**2 - 0.0063*t*humMax[i] - 0.00161*humMax[i]**2
+    );
+
+    const potMaxFinal = potenciaMax.map((p,i) => Math.round(Math.max(p, potenciaMaxTemp_HumMin[i])));
+    const potMinFinal = potenciaMin.map((p,i) => Math.round(Math.min(p, potenciaMinTemp_HumMax[i])));
+
+    // Render pronóstico potencia
+    let htmlPot = "";
+    days.forEach((d, i) => {
+      const date = new Date(d);
+      const dayName = date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+
+      htmlPot += `
+        <div class="day-card">
+          <div class="potencia-day">${dayName}</div>
+          <div class="potencia-icon">⚡</div>
+          <div class="potencia-power">${potMaxFinal[i]} <span>/ ${potMinFinal[i]} MW</span></div>
+        </div>
+      `;
+    });
+    document.getElementById("potenciaForecast").innerHTML = htmlPot;
+
+    // Render pronóstico temperatura/humedad
+    const rain = data.daily.precipitation_sum;
+    const getIcon = (rainValue) => {
+      if (rainValue > 10) return "🌧️";
+      if (rainValue > 2) return "🌦️";
+      if (rainValue > 0) return "☁️";
+      return "☀️";
+    };
+
+    let htmlTemp = "";
+    days.forEach((d, i) => {
+      const date = new Date(d);
+      const dayName = date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+      htmlTemp += `
+        <div class="day-card">
+          <div class="day">${dayName}</div>
+          <div class="icon">${getIcon(rain[i])}</div>
+          <div class="temp">🌡️ ${tempMax[i].toFixed(0)}° <span>/ ${tempMin[i].toFixed(0)}°</span></div>
+          <div class="humidity">💧 ${humMax[i]}% / ${humMin[i]}%</div>
+        </div>
+      `;
+    });
+    document.getElementById("forecast").innerHTML = htmlTemp;
+
+  });
+</script>
+
+</body>
+</html>
