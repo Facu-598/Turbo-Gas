@@ -127,9 +127,17 @@ fetch(urlCurrent)
       }
     }
 
-    document.getElementById("temp").innerHTML = `🌡️ ${temp}°C &nbsp;&nbsp; 💧 ${humidity}%`;
+    // Cálculo de potencia estimada
+    const potencia = 64.476 + 0.75*temp + 0.494*humidity - 0.0047*temp**2 - 0.0063*temp*humidity - 0.00161*humidity**2;
+
+    // Mostrar temperatura, humedad y potencia
+    document.getElementById("temp").innerHTML = `🌡️ ${temp.toFixed(1)} °C, 💧 ${humidity}% → ⚡ Potencia estimada: ${potencia.toFixed(2)} MW`;
+  })
+  .catch(() => { 
+    document.getElementById("temp").innerHTML = "No se pudo obtener el clima."; 
   });
 
+  
 // Pronóstico de 7 días completo (temperatura/humedad y potencia)
 const urlForecast = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&hourly=relativehumidity_2m&timezone=America/Argentina/Salta`;
 
