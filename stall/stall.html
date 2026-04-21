@@ -1,1 +1,217 @@
-asd
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logica Stall</title>
+    <style>
+        .responsive-image {display: block;margin: 0 auto;max-width: 80%;height: auto;}
+        .c-celeste {background-color: #87C4FF;padding: 10px;border-radius: 15px;
+      		max-width: 85%;margin: 0 auto 0 5%; /*S-D-Inf-Iz*/}
+    	.c-gris {background-color: #E3E4E5;padding: 10px;border-radius: 15px;
+        	max-width: 85%;margin: 0 auto 0 5%; /*S-D-Inf-Iz*/}
+      	.c-blanco {background-color: #FFFFFF;color: #28a745; padding: 10px;border-radius: 15px;
+        	max-width: 85%;margin: 0 auto 0 5%; /*S-D-Inf-Iz*/}
+	table {width: 70%;border-collapse: collapse;/*Para ver CSV*/
+	      margin-left: auto; margin-right: auto;}
+        th, td {border: 1px solid white;padding: 2px;text-align: center;/*Para ver CSV*/}
+	/*Contenedor de dos botones a la derecha de la pagina*/
+        .button-container {display: flex;justify-content: flex-end;margin-top: 20px;}
+        .custom-button {justify-content: end;padding: 10px 10px;line-height: 20px;
+                        text-align: start;margin-left: 10px; /* Espacio entre botones */}
+    </style>
+	<script>
+		function CargarImagen(url) {window.open(url, '_blank');}
+		function mostrarCSV(url) {fetch(url).then(response => response.text()).then(data => {
+                    const rows = data.split('\n').slice(0, 10);
+                    const table = document.createElement('table');
+			rows.forEach(row => {const tr = document.createElement('tr');
+			row.split(',').forEach(cell => {
+				const td = document.createElement('td');
+				td.textContent = cell;tr.appendChild(td);});table.appendChild(tr);});
+				/*td.textContent = decodeURIComponent(escape(cell));tr.appendChild(td);});table.appendChild(tr);});*/
+			/*document.getElementById('csv-preview').innerHTML = ''; // Limpiar el contenido previo*/
+			document.getElementById('csv-preview').appendChild(table);});}
+		function abrirCSV(url) {window.open(url, '_blank');}
+		document.addEventListener('DOMContentLoaded', () => {
+			mostrarCSV('Potencia Disponible-.csv');// Coloca aquí la ruta de tu archivo CSV});
+		});
+
+		function updateValue(sliderId) {
+			let slider = document.getElementById(sliderId);
+			let sliderValue = parseFloat(slider.value);
+			if (sliderId === 'sliderTAmb') {document.getElementById('TAmbValue').textContent = sliderValue.toFixed(1);}
+			else if (sliderId === 'sliderHAmb'){document.getElementById('HAmbValue').textContent = sliderValue;} 
+		
+		        let HAmbValue = parseFloat(document.getElementById('sliderHAmb').value);
+		        let TAmbValue = parseFloat(document.getElementById('sliderTAmb').value);
+		          
+			let ResultadoT2 = 0.8 * TAmbValue + 0.2 * HAmbValue - 9.85;
+			ResultadoT2 = ResultadoT2.toFixed(1);
+			
+			let ResultadoPActiva = 0.55 * ResultadoT2 - 0.03 * (ResultadoT2 ** 2) + 90.29;
+			ResultadoPActiva = ResultadoPActiva.toFixed(1);
+			
+			document.getElementById('ResultadoT2').textContent = ResultadoT2;
+        		document.getElementById('ResultadoPActiva').textContent = ResultadoPActiva;}
+			window.onload = function() {
+				updateValue('sliderTAmb');
+				updateValue('sliderHAmb');}
+	</script>
+</head>
+<body>
+	
+	<div style="text-align: center;"><h1>Logica Stall LM100</h1></div>
+	<div class="c-celeste">
+		<p>Como la LMS100 cuenta con dos compresores en serie sin acople mecánico, las variaciones en las 
+          condiciones del ciclo —gestionadas por el sistema de control— pueden provocar stall en el 
+          compresor de alta presión (HPC).<br><br>
+          El stall se produce cuando la capa límite —la porción de fluido más próxima al álabe— se separa 
+          de la superficie debido a un gradiente de presión adverso en la cara superior, interfiriendo con 
+          el flujo normal del aire.</p>
+	</div><br>
+
+	<div class="c-gris">
+		<img src="stall/STALLPS3_1.jpg" alt="Descripción de la imagen" class="responsive-image"></div><br>
+  
+	<div class="c-celeste">
+		<p>En la LMS100, el stall puede generarse cuando existe un desbalance entre compresores, es decir, 
+          cuando el LPC suministra un caudal de aire superior al que el HPC puede admitir. Esta condición 
+          provoca inestabilidad aerodinámica y, de evolucionar, puede causar esfuerzos elevados y 
+          vibraciones excesivas, con riesgo de daño severo en la unidad..</p>
+	</div><br>
+  
+  	<div class="c-gris">
+		<img src="stall/STALLPS3_2.jpg" alt="Descripción de la imagen" class="responsive-image"></div><br>
+  
+  	<div class="c-celeste">
+		<p>Con el fin de prevenir el stall en el HPC, en la LMS100 se define una curva de operación del 
+          booster (Booster Operating Line), que establece la relación entre la presión de compresión y la 
+          velocidad N44. Mantener la operación dentro de esta curva garantiza que el caudal suministrado 
+          por el LPC sea compatible con la capacidad del HPC.</p><br>
+      		El sistema de control ajusta la relación de compresión del LPC mediante las válvulas de 
+      sangrado variable (VBV). Al abrirlas, se desvía parte del aire comprimido, reduciendo la presión 
+      y el caudal que llegan al HPC; al cerrarlas, aumenta la compresión efectiva del LPC. De esta forma, 
+      se mantiene el punto de operación dentro de la Booster Operating Line y se evita el stall.
+	</div><br>
+  
+  	<div class="c-gris">
+		<img src="stall/STALLPS3_3.jpg" alt="Descripción de la imagen" class="responsive-image"></div>
+  
+  	<div style="text-align: center;"><h2>----------HPC STALL (A_STALLPS3)----------</h2></div>
+  	<div class="c-blanco">
+		<p>Este módulo ha sido modificado respecto a su especificación.
+          Se debe tener precaución al actualizar este módulo.
+          El bloque B_RTLAG1TC ha sido reemplazado por la macro RTLAG1TC_MAC, 
+          que permite constantes de tiempo Tau inferiores a la velocidad de fotogramas.<br>
+          
+          22/11/2010 MED - Se corrigió el módulo para que la salida "OUT" esté conectada a la entrada 
+          del bloque B_DIV y la salida "P" a PS3ST_PV1. Anteriormente, las conexiones estaban invertidas.</p>
+	</div><br>
+  
+  	<div class="c-gris">
+		<img src="stall/STALLPS3_0.jpg" alt="Descripción de la imagen" class="responsive-image"></div><br>
+
+  	<div class="c-gris">
+      <ul><li>RTLAG1TC_MAC recibe como entrada PS3Sel y genera una salida asociada a la variación 
+        dinámica de la presión, modelada mediante una constante de tiempo τ = 6,366 ms. Este 
+        comportamiento corresponde a un sistema de primer orden (lag), que suaviza los cambios de la 
+        señal. En condiciones estables, la salida tiende a un valor cercano a cero.</li></ul>
+      <ul><li>B_ZINV es un componente de Retardo de Tiempo Discreto (Discrete-time Delay): Su función 
+        principal es tomar un valor de entrada y "retrasarlo" un ciclo de ejecución</li></ul>
+      <ul><li>B_INTEG, que es un Integrador Seleccionable. Es el componente "I" de un control PID: suma 
+        continuamente el valor de la entrada al valor que ya tenía guardado. Cuando el LOWER como el UPPER 
+        estan en "0.0" la salida sera "0.0"</li></ul>
+
+	</div><br>
+  
+  	<div style="max-width: 650px; margin: 30px auto; font-family: Arial; 
+            background: #f4f6f8; padding: 20px; border-radius: 15px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+
+  <p style="font-weight: bold; font-size: 20px; text-align: center; margin-bottom: 15px;">
+    Detección Stall PS3
+  </p>
+
+  <div style="background: #e3f2fd; padding: 10px; border-radius: 10px; margin-bottom: 15px; text-align:center;">
+    <b>PS3Sel = PS3_Inicial × F <br>
+      A1 = ((PS3_previo - PS3Sel) / PS3_previo) × 100 + 400</b>
+  </div>
+
+  <!-- Controles -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+
+    <div>
+      <p>PS3 Inicial = <b><span id="PS3InicialVal">100</span></b></p>
+      <input type="range" id="PS3Inicial" min="1" max="700" value="516" oninput="calcular()" style="width:100%;">
+    </div>
+
+    <div>
+      <p>Factor F = <b><span id="FactorVal">1.00</span></b></p>
+      <input type="range" id="Factor" min="0.5" max="7" step="0.5" value="1.00" oninput="calcular()" style="width:100%;">
+    </div>
+
+    <div>
+      <p>PS3 Previo = <b><span id="PS3PrevioVal">120</span></b></p>
+      <input type="range" id="PS3Previo" min="1" max="700" value="517" oninput="calcular()" style="width:100%;">
+    </div>
+
+    <div>
+      <p>N25 = <b><span id="N25Val">6000</span></b></p>
+      <input type="range" id="N25" min="0" max="10000" value="6100" oninput="calcular()" style="width:100%;">
+    </div>
+
+  </div>
+
+  <!-- Resultados -->
+  <div style="margin-top: 20px; text-align: center;">
+
+    <h3>PS3Sel = <span id="PS3SelRes">0</span></h3>
+    <h3>A1 = <span id="A1Res">0</span></h3>
+
+    <h2 id="StallBox" style="padding: 12px; border-radius: 12px; background-color: lightgray;">
+      StallPS3 = <span id="StallRes">FALSE</span></h2>
+
+  </div>
+
+</div>
+
+<script>
+function calcular() {
+  let PS3i = parseFloat(document.getElementById("PS3Inicial").value);
+  let F = parseFloat(document.getElementById("Factor").value);
+  let PS3p = parseFloat(document.getElementById("PS3Previo").value);
+  let N25 = parseFloat(document.getElementById("N25").value);
+
+  document.getElementById("PS3InicialVal").innerText = PS3i;
+  document.getElementById("FactorVal").innerText = F.toFixed(2);
+  document.getElementById("PS3PrevioVal").innerText = PS3p;
+  document.getElementById("N25Val").innerText = N25;
+
+  if (PS3p === 0) return;
+
+  let PS3Sel = PS3i * F;
+  let A1 = ((PS3p - PS3Sel) / PS3p) * 100 + 400;
+
+  let Stall = (A1 >= -500 && A1 < -20 && N25 > 6050);
+
+  document.getElementById("PS3SelRes").innerText = PS3Sel.toFixed(2);
+  document.getElementById("A1Res").innerText = A1.toFixed(2);
+  document.getElementById("StallRes").innerText = Stall ? "TRUE" : "FALSE";
+
+  let box = document.getElementById("StallBox");
+  if (Stall) {
+    box.style.backgroundColor = "#d32f2f";
+    box.style.color = "white";
+  } else {
+    box.style.backgroundColor = "#81c784";
+    box.style.color = "black";
+  }
+}
+
+calcular();
+</script>
+	
+
+</body>
+</html>
